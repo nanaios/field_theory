@@ -6,6 +6,8 @@ Minecraft **1.21.1 / NeoForge 21.1** 向けの「場」ライブラリ Mod で�
 魔法・技術・環境などの Mod が同じ場を共有すれば、別々の Mod の効果が同じ物理法則のもとで **干渉し合う**
 ようになります。最初の利用 Mod は [Field Arcana（場術）](https://github.com/nanaios/field_arcana) です。
 
+今後の計画は [ROADMAP.md](ROADMAP.md) を参照してください。
+
 ---
 
 ## 1. 世界モデル
