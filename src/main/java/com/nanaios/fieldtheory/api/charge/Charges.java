@@ -5,7 +5,9 @@ import com.nanaios.fieldtheory.core.ChargeManager;
 import com.nanaios.fieldtheory.core.FieldAttachments;
 import com.nanaios.fieldtheory.core.FieldDataMaps;
 import javax.annotation.Nullable;
+import java.util.Map;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -49,6 +51,22 @@ public final class Charges {
         Double explicit = base == null ? null : base.charges().get(type);
         double q = explicit != null ? explicit : (type.equivalence() ? mass(entity) : 0.0);
         return q + induced(entity).value(type);
+    }
+
+    /**
+     * Polarizability α of the entity for {@code type}: from {@code base_charges} for entity types,
+     * from the {@code polarizability} item data map for dropped items.
+     */
+    @SuppressWarnings("deprecation")
+    public static double polarizability(Entity entity, FieldType type) {
+        if (entity instanceof ItemEntity item) {
+            Map<FieldType, Double> map = item.getItem().getItem().builtInRegistryHolder().getData(FieldDataMaps.ITEM_POLARIZABILITY);
+            Double alpha = map == null ? null : map.get(type);
+            return alpha == null ? 0.0 : alpha;
+        }
+        BaseCharges base = base(entity);
+        Double alpha = base == null ? null : base.polarizability().get(type);
+        return alpha == null ? 0.0 : alpha;
     }
 
     /** Whether the entity sources {@code type} itself. */

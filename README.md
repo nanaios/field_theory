@@ -56,8 +56,19 @@ a = sign(coupling) · forceScale · (Q / m) · E
 - 固有/誘起いずれかの明示的な電荷を持つエンティティは **放射体** になり、自分の場で他者に作用します（相互作用）。
 - 慣性質量の既定値はバウンディングボックスの体積です（データマップで上書き可）。
 
+### 誘電分極 —— 中性の導体
+
+電荷を持たない物でも、**分極率 α** を持つもの（金属）は、場の符号によらず **場が強い方** へ引かれます（誘電泳動）。
+
+```
+a = forceScale · α · ∇|E|² / (2m)
+```
+
+既定では鉄・金・銅のインゴットや塊・原石・鎖・避雷針などのドロップアイテム、アイアンゴーレム、各種トロッコが雷場に対して分極します。
+雷場の源のそばに置けば、正でも負でも金属のアイテムを引き寄せる「磁石」になります。
+
 力以外の作用（ダメージ・束縛・状態変化など）は `FieldInteraction` レジストリに登録した規則として追加できます。
-Field Theory 自身は `field_theory:force`（上式の力）だけを持ちます。
+Field Theory 自身は `field_theory:force`（上式の力）と `field_theory:polarization`（誘電分極）を持ちます。
 
 ### 標準場（四つの基本相互作用）
 
@@ -206,7 +217,17 @@ public static final DeferredHolder<FieldInteraction, FieldInteraction> GLOW =
 ```json
 { "values": {
     "minecraft:creeper":    { "charges": { "field_theory:fulgur": 2.0 } },
-    "minecraft:iron_golem": { "mass": 6.0 } } }
+    "minecraft:iron_golem": { "mass": 6.0, "polarizability": { "field_theory:fulgur": 1.0 } } } }
+```
+
+### アイテムの分極率 `data/<ns>/data_maps/item/polarizability.json`
+
+ドロップしたアイテムの分極率です。タグも使えます。
+
+```json
+{ "values": {
+    "#c:ingots/iron":         { "field_theory:fulgur": 0.004 },
+    "minecraft:copper_block": { "field_theory:fulgur": 0.04 } } }
 ```
 
 同梱の既定値の例：クリーパー・ブレイズは正の雷荷、ガーディアンは負の雷荷、**雷そのもの（lightning_bolt）は雷荷 +20**、
@@ -246,7 +267,7 @@ public static final DeferredHolder<FieldInteraction, FieldInteraction> GLOW =
 
 - **永続化**：源と領域は次元ごとの `data/field_theory_fields.dat` に保存されます。誘起電荷はエンティティのアタッチメントとして保存されます。
 - **同期**：ログイン・次元移動・リスポーン時にスナップショット、以後は tick ごとの差分を送信します。誘起電荷は追跡中のプレイヤーへ送ります。
-- **空間索引**：源の数が少ないうちは線形走査、32 個を超えると 16×16 のカラム格子で近傍だけを走査します。
+- **空間索引**：源の数が少ないうちは線形走査、32 個を超えると 16×16 のカラム格子で近傍だけを走査します。領域も同じ格子に登録され、各点は自分のカラムの領域だけを調べます。
 - **静止摩擦**：バニラの `LivingEntity` は毎 tick |v| < 0.003 の速度成分をゼロに丸めるため、
   地上の生物はおよそ 0.003 block/tick² 未満の力では動き出しません。弱い遠距離場の効果がわずかに「固着」して見えるのは仕様です。
 - 単位系：距離はブロック、時間は tick、加速度は block/tick²（参考：バニラの重力は 0.08）。
@@ -273,6 +294,8 @@ GameTest（`gametest/FieldTheoryGameTests.java`）では、実サーバー上で
 - 源の数の上限
 - 振動する源の遅延（φ が `Q·P(r)·cos(ωt − κr + φ₀)` と一致し、E が −∇φ の数値微分と一致）
 - 同位相の 2 源の振幅がフェーザー和の厳密式と一致、逆位相の 2 源が中央面で完全に打ち消し合う
+- 領域の索引による利得が、全領域の積と一致する
+- 誘電泳動：負の雷源のそばの鉄インゴットは引き寄せられ、土は動かない
 
 `v0.2.0` のようなタグを push すると、ビルドとテストを通した jar が GitHub Release に添付されます。
 

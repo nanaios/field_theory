@@ -1,5 +1,11 @@
 # 変更履歴
 
+## 0.4.0
+- 誘電分極（誘電泳動）：分極率 α を持つ中性の物体が ∇|E|² に沿って、場の符号によらず強い方へ引かれる。組み込みの相互作用 `field_theory:polarization`
+- `base_charges` に `polarizability`、アイテム用データマップ `field_theory:polarizability` を追加（既定：金属類、アイアンゴーレム、トロッコ）
+- 領域の空間索引（カラム格子）。領域を多数置いても利得の計算が重くならない
+- GameTest を追加（領域の索引と総当たりの一致、誘電泳動）。各テストの開始時に前のテストの残りを片付けるようにした
+
 ## 0.3.0
 - 振動する源（`FieldSource.frequency` / `phase`）と遅延伝播：φ = k·q·P(r)·cos(ωt − κr + φ₀)、E は厳密な勾配
 - `FieldType.waveSpeed()`（標準場は 0.5 block/tick）
