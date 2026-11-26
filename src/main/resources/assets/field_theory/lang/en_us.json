@@ -3,7 +3,6 @@
   "field_type.field_theory.fulgur": "Fulgur",
   "field_type.field_theory.nexus": "Nexus",
   "field_type.field_theory.mutatio": "Mutatio",
-
   "commands.field_theory.unknown_field": "Unknown field type: %s",
   "commands.field_theory.sample": "%s at %s: φ = %s (ambient %s), |E| = %s, E = %s, gain = %s",
   "commands.field_theory.source.added": "Added %s source q = %s at %s",
@@ -13,5 +12,11 @@
   "commands.field_theory.region.added": "Added region with gain %s, radius %s at %s",
   "commands.field_theory.region.cleared": "Removed %s region(s)",
   "commands.field_theory.charge.added": "Induced %s charge %s on %s entities",
-  "commands.field_theory.charge.cleared": "Cleared induced charges of %s entities"
+  "commands.field_theory.charge.cleared": "Cleared induced charges of %s entities",
+  "config.field_theory.physics": "Physics",
+  "config.field_theory.forceMultiplier": "Force multiplier",
+  "config.field_theory.maxAcceleration": "Max acceleration (blocks/tick²)",
+  "config.field_theory.affectPlayers": "Forces move players",
+  "config.field_theory.limits": "Limits",
+  "config.field_theory.maxSourcesPerLevel": "Max sources per dimension"
 }

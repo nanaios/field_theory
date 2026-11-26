@@ -60,7 +60,8 @@ public interface FieldWorld {
 
     /**
      * Adds or replaces (same id) a source. Returns {@code false} if a listener of
-     * {@link com.nanaios.fieldtheory.api.event.FieldSourceEvent.Added} cancelled it.
+     * {@link com.nanaios.fieldtheory.api.event.FieldSourceEvent.Added} cancelled it, or if the
+     * dimension already holds the configured maximum number of sources.
      */
     boolean putSource(FieldSource source);
 

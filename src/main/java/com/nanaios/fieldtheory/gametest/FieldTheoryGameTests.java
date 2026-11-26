@@ -9,7 +9,9 @@ import com.nanaios.fieldtheory.api.FieldTypes;
 import com.nanaios.fieldtheory.api.FieldWorld;
 import com.nanaios.fieldtheory.api.charge.Charges;
 import com.nanaios.fieldtheory.api.charge.EntityCharges;
+import com.nanaios.fieldtheory.core.FieldTheoryConfig;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -164,6 +166,56 @@ public final class FieldTheoryGameTests {
         EntityCharges charges = EntityCharges.EMPTY.with(FieldTypes.MUTATIO.get(), new EntityCharges.Charge(1.25, -1L));
         Tag chargeTag = EntityCharges.CODEC.encodeStart(NbtOps.INSTANCE, charges).getOrThrow();
         helper.assertTrue(charges.equals(EntityCharges.CODEC.parse(NbtOps.INSTANCE, chargeTag).getOrThrow()), "EntityCharges NBT round trip failed");
+        helper.succeed();
+    }
+
+    /** With more than 32 sources the column grid is used; it must agree with a brute-force sum. */
+    @GameTest(template = LAB, batch = "ft_grid")
+    public static void gridIndexMatchesBruteForce(GameTestHelper helper) {
+        FieldType fulgur = FieldTypes.FULGUR.get();
+        FieldWorld world = world(helper);
+        Vec3 probe = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
+        Random random = new Random(42);
+        for (int i = 0; i < 120; i++) {
+            Vec3 at = probe.add((random.nextDouble() - 0.5) * 100, (random.nextDouble() - 0.5) * 20, (random.nextDouble() - 0.5) * 100);
+            world.putSource(FieldSource.temporary(helper.getLevel(), fulgur, at, random.nextDouble() * 10 - 5, 400, ORIGIN));
+        }
+        double phi = 0;
+        double ex = 0;
+        for (FieldSource s : world.sources()) {
+            if (s.type() != fulgur) {
+                continue;
+            }
+            Vec3 d = probe.subtract(s.position());
+            double r = d.length();
+            if (r > fulgur.range()) {
+                continue;
+            }
+            phi += fulgur.potential(s.charge(), r);
+            ex += fulgur.field(s.charge(), r) * d.x / r;
+        }
+        FieldSample sample = world.sample(fulgur, probe);
+        helper.assertTrue(Math.abs(sample.sourcePotential() - phi) < 1.0E-9, "grid φ " + sample.sourcePotential() + " != brute force " + phi);
+        helper.assertTrue(Math.abs(sample.vector().x - ex) < 1.0E-9, "grid Ex " + sample.vector().x + " != brute force " + ex);
+        cleanup(helper);
+        helper.succeed();
+    }
+
+    /** New sources beyond the configured maximum per dimension are rejected. */
+    @GameTest(template = LAB, batch = "ft_limit")
+    public static void sourceLimitIsEnforced(GameTestHelper helper) {
+        FieldWorld world = world(helper);
+        int room = FieldTheoryConfig.maxSourcesPerLevel() - world.sources().size();
+        Vec3 at = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
+        for (int i = 0; i < room; i++) {
+            helper.assertTrue(world.putSource(FieldSource.temporary(helper.getLevel(), FieldTypes.MUTATIO.get(), at, 0.001, 400, ORIGIN)),
+                    "source " + i + " should fit under the limit");
+        }
+        FieldSource extra = FieldSource.temporary(helper.getLevel(), FieldTypes.MUTATIO.get(), at, 0.001, 400, ORIGIN);
+        helper.assertTrue(!world.putSource(extra), "a source beyond the limit must be rejected");
+        cleanup(helper);
+        helper.assertTrue(world.putSource(extra), "after cleanup there is room again");
+        cleanup(helper);
         helper.succeed();
     }
 }
