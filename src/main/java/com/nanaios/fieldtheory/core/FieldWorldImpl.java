@@ -16,6 +16,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.server.level.ServerLevel;
@@ -71,6 +73,30 @@ public final class FieldWorldImpl implements FieldWorld {
 
     // ================================================================== sampling
 
+    /** Visits every source of {@code type} that may lie within {@code range} of {@code pos}. */
+    private void forEachSourceNear(FieldType type, Vec3 pos, double range, Consumer<FieldSource> visitor) {
+        SourceIndex index = indices.get(type);
+        if (index == null) {
+            return;
+        }
+        if (index.useGrid()) {
+            int minX = SourceIndex.cell(pos.x - range);
+            int maxX = SourceIndex.cell(pos.x + range);
+            int minZ = SourceIndex.cell(pos.z - range);
+            int maxZ = SourceIndex.cell(pos.z + range);
+            for (int cx = minX; cx <= maxX; cx++) {
+                for (int cz = minZ; cz <= maxZ; cz++) {
+                    List<FieldSource> cell = index.cell(cx, cz);
+                    if (cell != null) {
+                        cell.forEach(visitor);
+                    }
+                }
+            }
+        } else {
+            index.all().forEach(visitor);
+        }
+    }
+
     @Override
     public FieldSample sample(FieldType type, Vec3 pos, @Nullable Entity exclude) {
         double gain = gain(type, pos);
@@ -79,35 +105,14 @@ public final class FieldWorldImpl implements FieldWorld {
         }
         double ambient = ambient(type, pos);
         double range = type.range();
+        double time = level.getGameTime();
         double[] acc = new double[4];
 
-        SourceIndex index = indices.get(type);
-        if (index != null) {
-            if (index.useGrid()) {
-                int minX = SourceIndex.cell(pos.x - range);
-                int maxX = SourceIndex.cell(pos.x + range);
-                int minZ = SourceIndex.cell(pos.z - range);
-                int maxZ = SourceIndex.cell(pos.z + range);
-                for (int cx = minX; cx <= maxX; cx++) {
-                    for (int cz = minZ; cz <= maxZ; cz++) {
-                        List<FieldSource> cell = index.cell(cx, cz);
-                        if (cell != null) {
-                            for (FieldSource s : cell) {
-                                accumulate(type, pos, s.position(), s.charge(), range, acc);
-                            }
-                        }
-                    }
-                }
-            } else {
-                for (FieldSource s : index.all()) {
-                    accumulate(type, pos, s.position(), s.charge(), range, acc);
-                }
-            }
-        }
+        forEachSourceNear(type, pos, range, s -> accumulate(type, pos, s.position(), s.charge(), s.frequency(), s.phase(), time, range, acc));
 
         for (Emitter emitter : emitters(type)) {
             if (emitter.entity() != exclude) {
-                accumulate(type, pos, emitter.position(), emitter.charge(), range, acc);
+                accumulate(type, pos, emitter.position(), emitter.charge(), 0.0, 0.0, time, range, acc);
             }
         }
 
@@ -115,7 +120,13 @@ public final class FieldWorldImpl implements FieldWorld {
                 new Vec3(acc[1] * gain, acc[2] * gain, acc[3] * gain), gain);
     }
 
-    private static void accumulate(FieldType type, Vec3 pos, Vec3 source, double charge, double range, double[] acc) {
+    /**
+     * Adds one source. For an oscillating source the retarded phase θ = ωt − kr + φ0 multiplies
+     * the potential, and the radial field gains the term from ∂θ/∂r:
+     * E_r = Q·(−P′(r)·cos θ − k·P(r)·sin θ).
+     */
+    private static void accumulate(FieldType type, Vec3 pos, Vec3 source, double charge, double frequency, double phase,
+                                   double time, double range, double[] acc) {
         double dx = pos.x - source.x;
         double dy = pos.y - source.y;
         double dz = pos.z - source.z;
@@ -124,13 +135,54 @@ public final class FieldWorldImpl implements FieldWorld {
             return;
         }
         double r = Math.sqrt(d2);
-        acc[0] += type.potential(charge, r);
+        double radial;
+        if (frequency == 0.0) {
+            acc[0] += type.potential(charge, r);
+            radial = type.field(charge, r);
+        } else {
+            double k = frequency / type.waveSpeed();
+            double theta = frequency * time - k * r + phase;
+            double cos = Math.cos(theta);
+            double potential = type.potential(charge, r);
+            acc[0] += potential * cos;
+            radial = type.field(charge, r) * cos - k * potential * Math.sin(theta);
+        }
         if (r > 1.0E-9) {
-            double f = type.field(charge, r) / r;
+            double f = radial / r;
             acc[1] += f * dx;
             acc[2] += f * dy;
             acc[3] += f * dz;
         }
+    }
+
+    @Override
+    public double amplitude(FieldType type, Vec3 pos) {
+        double gain = gain(type, pos);
+        if (gain == 0.0) {
+            return 0.0;
+        }
+        double range = type.range();
+        // frequency -> {Re, Im} of the summed phasor Σ Q·P(r)·e^{i(φ0 − kr)}
+        Map<Double, double[]> phasors = new HashMap<>();
+        forEachSourceNear(type, pos, range, s -> {
+            if (!s.isOscillating()) {
+                return;
+            }
+            double r = s.position().distanceTo(pos);
+            if (r > range) {
+                return;
+            }
+            double magnitude = type.potential(s.charge(), r);
+            double angle = s.phase() - s.frequency() / type.waveSpeed() * r;
+            double[] p = phasors.computeIfAbsent(s.frequency(), f -> new double[2]);
+            p[0] += magnitude * Math.cos(angle);
+            p[1] += magnitude * Math.sin(angle);
+        });
+        double total = 0.0;
+        for (double[] p : phasors.values()) {
+            total += Math.sqrt(p[0] * p[0] + p[1] * p[1]);
+        }
+        return gain * total;
     }
 
     @Override

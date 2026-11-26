@@ -27,6 +27,7 @@ public final class FieldType {
     private final double forceScale;
     private final int color;
     private final boolean equivalence;
+    private final double waveSpeed;
     private String descriptionId;
 
     private FieldType(Builder builder) {
@@ -37,6 +38,7 @@ public final class FieldType {
         this.forceScale = builder.forceScale;
         this.color = builder.color;
         this.equivalence = builder.equivalence;
+        this.waveSpeed = builder.waveSpeed;
     }
 
     public static Builder builder(Propagator propagator) {
@@ -79,6 +81,14 @@ public final class FieldType {
         return equivalence;
     }
 
+    /**
+     * Speed (blocks/tick) at which changes of an oscillating source travel. The wavelength of a
+     * source with period {@code T} ticks is {@code λ = waveSpeed · T}.
+     */
+    public double waveSpeed() {
+        return waveSpeed;
+    }
+
     /** Potential of a charge {@code q} at distance {@code r}. */
     public double potential(double charge, double r) {
         return strength * charge * propagator.potential(r);
@@ -118,6 +128,7 @@ public final class FieldType {
         private double forceScale = 0.05;
         private int color = 0xFFFFFF;
         private boolean equivalence;
+        private double waveSpeed = 0.5;
 
         private Builder(Propagator propagator) {
             this.propagator = Objects.requireNonNull(propagator);
@@ -150,6 +161,14 @@ public final class FieldType {
 
         public Builder equivalence() {
             this.equivalence = true;
+            return this;
+        }
+
+        public Builder waveSpeed(double blocksPerTick) {
+            if (blocksPerTick <= 0) {
+                throw new IllegalArgumentException("waveSpeed must be positive");
+            }
+            this.waveSpeed = blocksPerTick;
             return this;
         }
 

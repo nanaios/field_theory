@@ -35,7 +35,9 @@ import net.minecraft.world.phys.Vec3;
  *
  * <pre>
  * /fieldtheory sample &lt;field&gt; [pos]
+ * /fieldtheory amplitude &lt;field&gt; [pos]
  * /fieldtheory source add &lt;field&gt; &lt;pos&gt; &lt;charge&gt; [seconds]
+ * /fieldtheory source wave &lt;field&gt; &lt;pos&gt; &lt;charge&gt; &lt;period ticks&gt; [phase degrees] [seconds]
  * /fieldtheory source list
  * /fieldtheory source clear [field]
  * /fieldtheory region add &lt;pos&gt; &lt;radius&gt; &lt;gain&gt; [seconds]
@@ -62,7 +64,23 @@ public final class FieldCommand {
                                 .executes(c -> sample(c, c.getSource().getPosition()))
                                 .then(Commands.argument("pos", Vec3Argument.vec3())
                                         .executes(c -> sample(c, Vec3Argument.getVec3(c, "pos"))))))
+                .then(Commands.literal("amplitude")
+                        .then(Commands.argument("field", ResourceLocationArgument.id()).suggests(FIELDS)
+                                .executes(c -> amplitude(c, c.getSource().getPosition()))
+                                .then(Commands.argument("pos", Vec3Argument.vec3())
+                                        .executes(c -> amplitude(c, Vec3Argument.getVec3(c, "pos"))))))
                 .then(Commands.literal("source")
+                        .then(Commands.literal("wave")
+                                .then(Commands.argument("field", ResourceLocationArgument.id()).suggests(FIELDS)
+                                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                                                .then(Commands.argument("charge", DoubleArgumentType.doubleArg(-1000, 1000))
+                                                        .then(Commands.argument("period", IntegerArgumentType.integer(2, 2400))
+                                                                .executes(c -> addWave(c, 0.0, -1))
+                                                                .then(Commands.argument("phase", DoubleArgumentType.doubleArg(-360, 360))
+                                                                        .executes(c -> addWave(c, DoubleArgumentType.getDouble(c, "phase"), -1))
+                                                                        .then(Commands.argument("seconds", IntegerArgumentType.integer(1, 86400))
+                                                                                .executes(c -> addWave(c, DoubleArgumentType.getDouble(c, "phase"),
+                                                                                        IntegerArgumentType.getInteger(c, "seconds") * 20)))))))))
                         .then(Commands.literal("add")
                                 .then(Commands.argument("field", ResourceLocationArgument.id()).suggests(FIELDS)
                                         .then(Commands.argument("pos", Vec3Argument.vec3())
@@ -138,12 +156,38 @@ public final class FieldCommand {
         return 1;
     }
 
+    private static int amplitude(CommandContext<CommandSourceStack> c, Vec3 pos) throws CommandSyntaxException {
+        FieldType type = field(c);
+        double amplitude = world(c).amplitude(type, pos);
+        c.getSource().sendSuccess(() -> Component.translatable("commands.field_theory.amplitude", type.displayName(), fmt(pos), fmt(amplitude)), false);
+        return (int) Math.round(amplitude * 1000);
+    }
+
+    private static int addWave(CommandContext<CommandSourceStack> c, double phaseDegrees, int durationTicks) throws CommandSyntaxException {
+        FieldType type = field(c);
+        Vec3 pos = Vec3Argument.getVec3(c, "pos");
+        double charge = DoubleArgumentType.getDouble(c, "charge");
+        int period = IntegerArgumentType.getInteger(c, "period");
+        long expiresAt = durationTicks < 0 ? -1L : c.getSource().getLevel().getGameTime() + durationTicks;
+        FieldSource source = new FieldSource(UUID.randomUUID(), type, pos, charge, expiresAt, ORIGIN,
+                FieldSource.frequencyForPeriod(period), Math.toRadians(phaseDegrees));
+        if (!world(c).putSource(source)) {
+            c.getSource().sendFailure(Component.translatable("commands.field_theory.source.cancelled"));
+            return 0;
+        }
+        double wavelength = type.waveSpeed() * period;
+        c.getSource().sendSuccess(() -> Component.translatable("commands.field_theory.source.wave_added",
+                type.displayName(), fmt(charge), period, fmt(wavelength), fmt(pos)), true);
+        return 1;
+    }
+
     private static int listSources(CommandContext<CommandSourceStack> c) {
         Collection<FieldSource> sources = world(c).sources();
         c.getSource().sendSuccess(() -> Component.translatable("commands.field_theory.source.list", sources.size()), false);
         for (FieldSource s : sources) {
             c.getSource().sendSuccess(() -> Component.literal(" - ").append(s.type().displayName())
-                    .append(Component.literal(" q=" + fmt(s.charge()) + " @ " + fmt(s.position()) + " [" + s.origin() + "]")), false);
+                    .append(Component.literal(" q=" + fmt(s.charge()) + (s.isOscillating() ? " T=" + fmt(s.period()) : "")
+                            + " @ " + fmt(s.position()) + " [" + s.origin() + "]")), false);
         }
         return sources.size();
     }

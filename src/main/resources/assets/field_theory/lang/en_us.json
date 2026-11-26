@@ -18,5 +18,7 @@
   "config.field_theory.maxAcceleration": "Max acceleration (blocks/tick²)",
   "config.field_theory.affectPlayers": "Forces move players",
   "config.field_theory.limits": "Limits",
-  "config.field_theory.maxSourcesPerLevel": "Max sources per dimension"
+  "config.field_theory.maxSourcesPerLevel": "Max sources per dimension",
+  "commands.field_theory.amplitude": "%s at %s: oscillation amplitude %s",
+  "commands.field_theory.source.wave_added": "Added oscillating %s source q = %s, period %s ticks (λ = %s blocks) at %s"
 }
