@@ -32,6 +32,13 @@ public interface FieldWorld {
      */
     FieldSample sample(FieldType type, Vec3 pos, @Nullable Entity exclude);
 
+    /**
+     * Time-averaged oscillation amplitude of the potential at {@code pos}: oscillating sources of
+     * the same frequency are added as phasors (so they interfere), different frequencies add in
+     * magnitude. Static sources contribute nothing. Region gain is applied.
+     */
+    double amplitude(FieldType type, Vec3 pos);
+
     /** Ambient (background) potential at {@code pos}, without region gain. */
     double ambient(FieldType type, Vec3 pos);
 

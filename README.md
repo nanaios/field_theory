@@ -29,6 +29,20 @@ E(x) = G(x) ·                  Σ_i k · q_i · P′(|x − x_i|) · (x − x_i
 - 源は **重ね合わせ** で足し合わされます（双極子・遮蔽・レンズが自然に表現できます）。
 - 環境場は一様なので勾配を持たず、**力は生みません**（ゲージの自由度のようなもの）。ポテンシャルの閾値や資源として使われます。
 
+### 波 —— 振動する源と干渉
+
+源は振動させることができます（`FieldSource.frequency` は角振動数 ω [rad/tick]、`phase` は φ₀）。
+振動は場ごとの伝播速度 `c = FieldType.waveSpeed()`（標準場はいずれも 0.5 block/tick）で広がるため、
+距離 `r` の点には遅れて届きます。
+
+```
+φ_i(x, t) = k · q_i · P(r) · cos(ωt − κr + φ₀),   κ = ω / c,   波長 λ = c · 周期
+E_r       = k · q_i · ( −P′(r) · cos θ − κ · P(r) · sin θ )
+```
+
+同じ振動数の源どうしは **干渉** します。`FieldWorld.amplitude(type, pos)` は、同じ振動数の源をフェーザーとして足し合わせた
+時間平均の振幅を返します。同位相の 2 つの源の中央面では振幅が倍になり、逆位相では厳密に 0 になります。
+
 ### 物質との結合 —— 相互作用
 
 エンティティは場ごとに **電荷 Q** と **慣性質量 m** を持ち、毎 tick 次の加速度を受けます。
@@ -116,6 +130,16 @@ Charges.induce(entity, FieldTypes.NEXUS.get(), 3.0, 300);
 
 `origin` は「誰が作った源か」を示すタグです。自分の Mod の ID を使うと後片付けや絞り込みが楽になります。
 
+### 振動する源と干渉
+
+```java
+// 周期 12 tick（標準場なら波長 6 ブロック）、位相 90° で振動する源
+world.putSource(new FieldSource(UUID.randomUUID(), FieldTypes.FULGUR.get(), pos, 10.0, -1L, MY_ORIGIN,
+        FieldSource.frequencyForPeriod(12), Math.toRadians(90)));
+
+double a = world.amplitude(FieldTypes.FULGUR.get(), probe); // 干渉縞の強さ
+```
+
 ### 独自の場を追加する
 
 ```java
@@ -128,6 +152,7 @@ public static final DeferredHolder<FieldType, FieldType> AETHER = FIELDS.registe
                 .range(24.0)
                 .forceScale(0.05)
                 .color(0xFFE08A)
+                .waveSpeed(1.0)   // 振動の伝播速度（block/tick、省略時 0.5）
                 .build());
 ```
 
@@ -193,6 +218,8 @@ public static final DeferredHolder<FieldInteraction, FieldInteraction> GLOW =
 
 ```
 /fieldtheory sample <field> [pos]
+/fieldtheory amplitude <field> [pos]
+/fieldtheory source wave <field> <pos> <charge> <period ticks> [phase degrees] [seconds]
 /fieldtheory source add <field> <pos> <charge> [seconds]
 /fieldtheory source list
 /fieldtheory source clear [field]
@@ -244,6 +271,8 @@ GameTest（`gametest/FieldTheoryGameTests.java`）では、実サーバー上で
 - 誘起電荷の失効、データパックの環境場、NBT 往復
 - 源が 32 個を超えたときの空間格子が、全源の総和と 1e-9 以内で一致すること
 - 源の数の上限
+- 振動する源の遅延（φ が `Q·P(r)·cos(ωt − κr + φ₀)` と一致し、E が −∇φ の数値微分と一致）
+- 同位相の 2 源の振幅がフェーザー和の厳密式と一致、逆位相の 2 源が中央面で完全に打ち消し合う
 
 `v0.2.0` のようなタグを push すると、ビルドとテストを通した jar が GitHub Release に添付されます。
 

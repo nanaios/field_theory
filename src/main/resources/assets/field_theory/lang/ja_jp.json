@@ -18,5 +18,7 @@
   "config.field_theory.maxAcceleration": "最大加速度 (block/tick²)",
   "config.field_theory.affectPlayers": "場の力でプレイヤーを動かす",
   "config.field_theory.limits": "上限",
-  "config.field_theory.maxSourcesPerLevel": "次元あたりの源の最大数"
+  "config.field_theory.maxSourcesPerLevel": "次元あたりの源の最大数",
+  "commands.field_theory.amplitude": "%s @ %s: 振動の振幅 %s",
+  "commands.field_theory.source.wave_added": "%sの振動源 q = %s、周期 %s tick（波長 %s ブロック）を %s に置きました"
 }

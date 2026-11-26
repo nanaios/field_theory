@@ -159,7 +159,8 @@ public final class FieldTheoryGameTests {
     /** Sources and charges survive an NBT round trip. */
     @GameTest(template = LAB, batch = "ft_codec")
     public static void codecsRoundTrip(GameTestHelper helper) {
-        FieldSource source = new FieldSource(UUID.randomUUID(), FieldTypes.NEXUS.get(), new Vec3(1.5, -2.0, 3.25), -4.5, 1234L, ORIGIN);
+        FieldSource source = new FieldSource(UUID.randomUUID(), FieldTypes.NEXUS.get(), new Vec3(1.5, -2.0, 3.25), -4.5, 1234L, ORIGIN,
+                FieldSource.frequencyForPeriod(16), 0.75);
         Tag tag = FieldSource.CODEC.encodeStart(NbtOps.INSTANCE, source).getOrThrow();
         helper.assertTrue(source.equals(FieldSource.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow()), "FieldSource NBT round trip failed");
 
@@ -215,6 +216,76 @@ public final class FieldTheoryGameTests {
         helper.assertTrue(!world.putSource(extra), "a source beyond the limit must be rejected");
         cleanup(helper);
         helper.assertTrue(world.putSource(extra), "after cleanup there is room again");
+        cleanup(helper);
+        helper.succeed();
+    }
+
+    private static FieldSource wave(GameTestHelper helper, FieldType type, Vec3 relative, double charge, int period, double phase) {
+        return new FieldSource(UUID.randomUUID(), type, helper.absoluteVec(relative), charge, helper.getLevel().getGameTime() + 400, ORIGIN,
+                FieldSource.frequencyForPeriod(period), phase);
+    }
+
+    /** An oscillating source is retarded: φ = Q·P(r)·cos(ωt − kr + φ0), and E is exactly −∇φ. */
+    @GameTest(template = LAB, batch = "ft_wave_retarded")
+    public static void oscillatingSourceIsRetarded(GameTestHelper helper) {
+        FieldType fulgur = FieldTypes.FULGUR.get();
+        FieldWorld world = world(helper);
+        FieldSource source = wave(helper, fulgur, new Vec3(4.5, 4.0, 7.5), 5.0, 12, 0.3);
+        world.putSource(source);
+        Vec3 probe = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
+        double r = 3.0;
+        double k = source.frequency() / fulgur.waveSpeed();
+        double expected = fulgur.potential(5.0, r) * Math.cos(source.frequency() * helper.getLevel().getGameTime() - k * r + 0.3);
+        FieldSample sample = world.sample(fulgur, probe);
+        helper.assertTrue(Math.abs(sample.sourcePotential() - expected) < 1.0E-9, "retarded φ " + sample.sourcePotential() + " != " + expected);
+
+        // Test positions are ~10^7 blocks out, where doubles resolve ~2e-9: keep the step coarse.
+        // A wrong retardation term (k·P·sin θ ≈ 1.7 here) would still be off by orders of magnitude.
+        double h = 1.0E-3;
+        double plus = world.sample(fulgur, probe.add(h, 0, 0)).potential();
+        double minus = world.sample(fulgur, probe.add(-h, 0, 0)).potential();
+        double numeric = -(plus - minus) / (2 * h);
+        helper.assertTrue(Math.abs(sample.vector().x - numeric) < 1.0E-4, "E_x " + sample.vector().x + " != -dφ/dx " + numeric);
+        cleanup(helper);
+        helper.succeed();
+    }
+
+    /** Two coherent in-phase sources: amplitudes add as phasors (doubling on the mid plane). */
+    @GameTest(template = LAB, batch = "ft_wave_inphase")
+    public static void inPhaseSourcesInterfere(GameTestHelper helper) {
+        FieldType fulgur = FieldTypes.FULGUR.get();
+        FieldWorld world = world(helper);
+        int period = 12;
+        double k = FieldSource.frequencyForPeriod(period) / fulgur.waveSpeed();
+        world.putSource(wave(helper, fulgur, new Vec3(4.5, 4.0, 7.5), 5.0, period, 0.0));
+        world.putSource(wave(helper, fulgur, new Vec3(10.5, 4.0, 7.5), 5.0, period, 0.0));
+
+        double mid = world.amplitude(fulgur, helper.absoluteVec(new Vec3(7.5, 4.0, 7.5)));
+        double expectedMid = 2 * fulgur.potential(5.0, 3.0);
+        helper.assertTrue(Math.abs(mid - expectedMid) < 1.0E-9, "mid-plane amplitude " + mid + " != " + expectedMid);
+
+        // λ = 6: a quarter wavelength off the mid point the paths differ by λ/2.
+        double r1 = 4.5;
+        double r2 = 1.5;
+        double re = fulgur.potential(5.0, r1) * Math.cos(-k * r1) + fulgur.potential(5.0, r2) * Math.cos(-k * r2);
+        double im = fulgur.potential(5.0, r1) * Math.sin(-k * r1) + fulgur.potential(5.0, r2) * Math.sin(-k * r2);
+        double off = world.amplitude(fulgur, helper.absoluteVec(new Vec3(9.0, 4.0, 7.5)));
+        helper.assertTrue(Math.abs(off - Math.hypot(re, im)) < 1.0E-9, "phasor sum " + off + " != " + Math.hypot(re, im));
+        cleanup(helper);
+        helper.succeed();
+    }
+
+    /** Two coherent sources in antiphase cancel exactly on their mid plane. */
+    @GameTest(template = LAB, batch = "ft_wave_antiphase")
+    public static void antiPhaseSourcesCancel(GameTestHelper helper) {
+        FieldType fulgur = FieldTypes.FULGUR.get();
+        FieldWorld world = world(helper);
+        world.putSource(wave(helper, fulgur, new Vec3(4.5, 4.0, 7.5), 5.0, 16, 0.0));
+        world.putSource(wave(helper, fulgur, new Vec3(10.5, 4.0, 7.5), 5.0, 16, Math.PI));
+        Vec3 mid = helper.absoluteVec(new Vec3(7.5, 6.0, 9.5));
+        helper.assertTrue(world.amplitude(fulgur, mid) < 1.0E-9, "antiphase amplitude on the mid plane should vanish");
+        helper.assertTrue(Math.abs(world.sample(fulgur, mid).sourcePotential()) < 1.0E-9, "instantaneous φ on the mid plane should vanish");
+        helper.assertTrue(world.amplitude(fulgur, helper.absoluteVec(new Vec3(5.5, 4.0, 7.5))) > 0.5, "off the mid plane there is signal");
         cleanup(helper);
         helper.succeed();
     }
