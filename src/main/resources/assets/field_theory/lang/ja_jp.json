@@ -1,0 +1,17 @@
+{
+  "field_type.field_theory.gravis": "重場",
+  "field_type.field_theory.fulgur": "雷場",
+  "field_type.field_theory.nexus": "結場",
+  "field_type.field_theory.mutatio": "転場",
+
+  "commands.field_theory.unknown_field": "未知の場です: %s",
+  "commands.field_theory.sample": "%s @ %s: φ = %s (環境 %s), |E| = %s, E = %s, 利得 = %s",
+  "commands.field_theory.source.added": "%sの源 q = %s を %s に置きました",
+  "commands.field_theory.source.cancelled": "他のModによって源の設置が拒否されました",
+  "commands.field_theory.source.list": "場の源: %s 個",
+  "commands.field_theory.source.cleared": "場の源を %s 個取り除きました",
+  "commands.field_theory.region.added": "利得 %s・半径 %s の領域を %s に置きました",
+  "commands.field_theory.region.cleared": "領域を %s 個取り除きました",
+  "commands.field_theory.charge.added": "%sの電荷 %s を %s 体に誘起しました",
+  "commands.field_theory.charge.cleared": "%s 体の誘起電荷を消去しました"
+}

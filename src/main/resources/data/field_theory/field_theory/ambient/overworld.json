@@ -1,0 +1,7 @@
+[
+  { "field": "field_theory:gravis",  "dimensions": ["minecraft:overworld"], "base": 1.0 },
+  { "field": "field_theory:fulgur",  "dimensions": ["minecraft:overworld"], "base": 0.2, "rain": 0.8, "thunder": 3.0 },
+  { "field": "field_theory:nexus",   "dimensions": ["minecraft:overworld"], "base": 0.4 },
+  { "field": "field_theory:mutatio", "dimensions": ["minecraft:overworld"], "base": 0.1, "night": 0.2 },
+  { "field": "field_theory:mutatio", "dimensions": ["minecraft:overworld"], "base": 0.5, "max_y": 0 }
+]

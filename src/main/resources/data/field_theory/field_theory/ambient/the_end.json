@@ -1,0 +1,6 @@
+[
+  { "field": "field_theory:gravis",  "dimensions": ["minecraft:the_end"], "base": 0.4 },
+  { "field": "field_theory:fulgur",  "dimensions": ["minecraft:the_end"], "base": 0.1 },
+  { "field": "field_theory:nexus",   "dimensions": ["minecraft:the_end"], "base": 1.5 },
+  { "field": "field_theory:mutatio", "dimensions": ["minecraft:the_end"], "base": 0.6 }
+]
