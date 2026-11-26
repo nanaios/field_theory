@@ -12,9 +12,6 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 /** Runs every registered {@link FieldInteraction} for every entity, every tick. */
 public final class InteractionDriver {
-    /** Upper bound of field-induced acceleration per tick (blocks/tick²). */
-    public static final double MAX_ACCELERATION = 0.5;
-
     private static final FieldContextImpl SERVER_CONTEXT = new FieldContextImpl();
     private static final FieldContextImpl CLIENT_CONTEXT = new FieldContextImpl();
 
@@ -52,15 +49,16 @@ public final class InteractionDriver {
     }
 
     private static void applyMotion(Entity entity, FieldContextImpl context) {
-        if (entity instanceof Player player && player.getAbilities().flying) {
+        if (entity instanceof Player player && (player.getAbilities().flying || !FieldTheoryConfig.affectPlayers())) {
             return;
         }
         boolean changed = false;
         Vec3 acceleration = context.acceleration();
         double lengthSqr = acceleration.lengthSqr();
         if (lengthSqr > 1.0E-10) {
-            if (lengthSqr > MAX_ACCELERATION * MAX_ACCELERATION) {
-                acceleration = acceleration.scale(MAX_ACCELERATION / Math.sqrt(lengthSqr));
+            double max = FieldTheoryConfig.maxAcceleration();
+            if (lengthSqr > max * max) {
+                acceleration = acceleration.scale(max / Math.sqrt(lengthSqr));
             }
             FieldForceEvent event = NeoForge.EVENT_BUS.post(new FieldForceEvent(entity, acceleration));
             if (!event.isCanceled()) {

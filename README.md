@@ -204,7 +204,18 @@ public static final DeferredHolder<FieldInteraction, FieldInteraction> GLOW =
 
 ---
 
-## 5. 実装メモ
+## 5. 設定（`serverconfig/field_theory-server.toml`）
+
+サーバー設定はクライアントへ同期されます（ローカルプレイヤーの運動はクライアントで計算されるため）。ゲーム内の Mods 画面からも編集できます。
+
+| キー | 既定値 | 意味 |
+|---|---|---|
+| `physics.forceMultiplier` | 1.0 | 場の力全体の倍率（0 で力を無効化） |
+| `physics.maxAcceleration` | 0.5 | 場による加速度の上限（block/tick²） |
+| `physics.affectPlayers` | true | 場の力でプレイヤーを動かすか |
+| `limits.maxSourcesPerLevel` | 4096 | 次元あたりの点源の上限（超えた分の `putSource` は `false`） |
+
+## 6. 実装メモ
 
 - **永続化**：源と領域は次元ごとの `data/field_theory_fields.dat` に保存されます。誘起電荷はエンティティのアタッチメントとして保存されます。
 - **同期**：ログイン・次元移動・リスポーン時にスナップショット、以後は tick ごとの差分を送信します。誘起電荷は追跡中のプレイヤーへ送ります。
@@ -215,7 +226,7 @@ public static final DeferredHolder<FieldInteraction, FieldInteraction> GLOW =
 
 ---
 
-## 6. 開発
+## 7. 開発
 
 ```bash
 ./gradlew build                 # ビルド
@@ -231,6 +242,10 @@ GameTest（`gametest/FieldTheoryGameTests.java`）では、実サーバー上で
 - 利得 0 の領域による遮蔽
 - 電荷を持つエンティティ自身が源となって他者を引く（エンティティ間相互作用）
 - 誘起電荷の失効、データパックの環境場、NBT 往復
+- 源が 32 個を超えたときの空間格子が、全源の総和と 1e-9 以内で一致すること
+- 源の数の上限
+
+`v0.2.0` のようなタグを push すると、ビルドとテストを通した jar が GitHub Release に添付されます。
 
 ## ライセンス
 

@@ -7,8 +7,11 @@ import com.nanaios.fieldtheory.core.FieldAttachments;
 import com.nanaios.fieldtheory.core.FieldDataMaps;
 import com.nanaios.fieldtheory.core.FieldEvents;
 import com.nanaios.fieldtheory.core.FieldRegistries;
+import com.nanaios.fieldtheory.core.FieldTheoryConfig;
 import com.nanaios.fieldtheory.network.FieldNetwork;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -19,7 +22,8 @@ import net.neoforged.neoforge.common.NeoForge;
 @Mod(FieldTheoryAPI.MOD_ID)
 public final class FieldTheory {
 
-    public FieldTheory(IEventBus modBus) {
+    public FieldTheory(IEventBus modBus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.SERVER, FieldTheoryConfig.SPEC);
         modBus.addListener(FieldRegistries::onNewRegistry);
         modBus.addListener(FieldDataMaps::register);
         modBus.addListener(FieldNetwork::register);

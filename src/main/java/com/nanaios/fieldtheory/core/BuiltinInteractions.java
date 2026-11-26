@@ -21,7 +21,8 @@ public final class BuiltinInteractions {
     }
 
     private static void force(FieldContext context) {
-        if (!context.controlsMotion()) {
+        double multiplier = FieldTheoryConfig.forceMultiplier();
+        if (!context.controlsMotion() || multiplier == 0.0) {
             return;
         }
         for (FieldType type : FieldTheoryAPI.fieldTypes()) {
@@ -37,7 +38,7 @@ public final class BuiltinInteractions {
             if (e.lengthSqr() < 1.0E-12) {
                 continue;
             }
-            context.accelerate(e.scale(sign * type.forceScale() * charge / context.mass()));
+            context.accelerate(e.scale(multiplier * sign * type.forceScale() * charge / context.mass()));
         }
     }
 }

@@ -282,6 +282,9 @@ public final class FieldWorldImpl implements FieldWorld {
     public boolean putSource(FieldSource source) {
         requireAuthority();
         boolean isNew = !sources.containsKey(source.id());
+        if (isNew && sources.size() >= FieldTheoryConfig.maxSourcesPerLevel()) {
+            return false;
+        }
         if (isNew && NeoForge.EVENT_BUS.post(new FieldSourceEvent.Added(level, source)).isCanceled()) {
             return false;
         }

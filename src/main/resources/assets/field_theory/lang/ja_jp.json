@@ -3,7 +3,6 @@
   "field_type.field_theory.fulgur": "雷場",
   "field_type.field_theory.nexus": "結場",
   "field_type.field_theory.mutatio": "転場",
-
   "commands.field_theory.unknown_field": "未知の場です: %s",
   "commands.field_theory.sample": "%s @ %s: φ = %s (環境 %s), |E| = %s, E = %s, 利得 = %s",
   "commands.field_theory.source.added": "%sの源 q = %s を %s に置きました",
@@ -13,5 +12,11 @@
   "commands.field_theory.region.added": "利得 %s・半径 %s の領域を %s に置きました",
   "commands.field_theory.region.cleared": "領域を %s 個取り除きました",
   "commands.field_theory.charge.added": "%sの電荷 %s を %s 体に誘起しました",
-  "commands.field_theory.charge.cleared": "%s 体の誘起電荷を消去しました"
+  "commands.field_theory.charge.cleared": "%s 体の誘起電荷を消去しました",
+  "config.field_theory.physics": "物理",
+  "config.field_theory.forceMultiplier": "力の倍率",
+  "config.field_theory.maxAcceleration": "最大加速度 (block/tick²)",
+  "config.field_theory.affectPlayers": "場の力でプレイヤーを動かす",
+  "config.field_theory.limits": "上限",
+  "config.field_theory.maxSourcesPerLevel": "次元あたりの源の最大数"
 }
