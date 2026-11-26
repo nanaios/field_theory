@@ -20,6 +20,9 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -59,6 +62,7 @@ public final class FieldTheoryGameTests {
     /** Equal charges: E cancels and φ doubles at the midpoint. Opposite charges: the reverse. */
     @GameTest(template = LAB, batch = "ft_superposition")
     public static void superposition(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         FieldType fulgur = FieldTypes.FULGUR.get();
         FieldWorld world = world(helper);
         Vec3 mid = helper.absoluteVec(new Vec3(7.5, 3.0, 7.5));
@@ -81,6 +85,7 @@ public final class FieldTheoryGameTests {
     /** Gravis pulls every body (charge = mass) toward a positive source. */
     @GameTest(template = LAB, batch = "ft_gravis", timeoutTicks = 100)
     public static void gravisAttracts(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, new Vec3(4.5, 2.0, 7.5));
         double startX = stand.getX();
         put(helper, FieldTypes.GRAVIS.get(), new Vec3(8.5, 3.0, 7.5), 30.0);
@@ -93,6 +98,7 @@ public final class FieldTheoryGameTests {
     /** Like Fulgur charges repel; neutral matter does not feel Fulgur. */
     @GameTest(template = LAB, batch = "ft_fulgur", timeoutTicks = 100)
     public static void fulgurRepelsLikeCharges(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         ArmorStand charged = helper.spawn(EntityType.ARMOR_STAND, new Vec3(9.5, 2.0, 7.5));
         ArmorStand neutral = helper.spawn(EntityType.ARMOR_STAND, new Vec3(5.5, 2.0, 7.5));
         Charges.induce(charged, FieldTypes.FULGUR.get(), 3.0, 200);
@@ -109,6 +115,7 @@ public final class FieldTheoryGameTests {
     /** A region with gain 0 shields everything inside it. */
     @GameTest(template = LAB, batch = "ft_shield", timeoutTicks = 100)
     public static void shieldBlocksField(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, new Vec3(4.5, 2.0, 7.5));
         double startX = stand.getX();
         world(helper).putRegion(FieldRegion.temporary(helper.getLevel(), Optional.empty(),
@@ -124,6 +131,7 @@ public final class FieldTheoryGameTests {
     /** A charged entity is itself a source: it pulls its neighbour (entity-entity interaction). */
     @GameTest(template = LAB, batch = "ft_emitter", timeoutTicks = 100)
     public static void chargedEntityIsASource(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         ArmorStand heavy = helper.spawn(EntityType.ARMOR_STAND, new Vec3(9.5, 2.0, 7.5));
         ArmorStand light = helper.spawn(EntityType.ARMOR_STAND, new Vec3(5.5, 2.0, 7.5));
         Charges.induce(heavy, FieldTypes.GRAVIS.get(), 40.0, 200);
@@ -173,6 +181,7 @@ public final class FieldTheoryGameTests {
     /** With more than 32 sources the column grid is used; it must agree with a brute-force sum. */
     @GameTest(template = LAB, batch = "ft_grid")
     public static void gridIndexMatchesBruteForce(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         FieldType fulgur = FieldTypes.FULGUR.get();
         FieldWorld world = world(helper);
         Vec3 probe = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
@@ -205,6 +214,7 @@ public final class FieldTheoryGameTests {
     /** New sources beyond the configured maximum per dimension are rejected. */
     @GameTest(template = LAB, batch = "ft_limit")
     public static void sourceLimitIsEnforced(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         FieldWorld world = world(helper);
         int room = FieldTheoryConfig.maxSourcesPerLevel() - world.sources().size();
         Vec3 at = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
@@ -228,6 +238,7 @@ public final class FieldTheoryGameTests {
     /** An oscillating source is retarded: φ = Q·P(r)·cos(ωt − kr + φ0), and E is exactly −∇φ. */
     @GameTest(template = LAB, batch = "ft_wave_retarded")
     public static void oscillatingSourceIsRetarded(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         FieldType fulgur = FieldTypes.FULGUR.get();
         FieldWorld world = world(helper);
         FieldSource source = wave(helper, fulgur, new Vec3(4.5, 4.0, 7.5), 5.0, 12, 0.3);
@@ -253,6 +264,7 @@ public final class FieldTheoryGameTests {
     /** Two coherent in-phase sources: amplitudes add as phasors (doubling on the mid plane). */
     @GameTest(template = LAB, batch = "ft_wave_inphase")
     public static void inPhaseSourcesInterfere(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         FieldType fulgur = FieldTypes.FULGUR.get();
         FieldWorld world = world(helper);
         int period = 12;
@@ -278,6 +290,7 @@ public final class FieldTheoryGameTests {
     /** Two coherent sources in antiphase cancel exactly on their mid plane. */
     @GameTest(template = LAB, batch = "ft_wave_antiphase")
     public static void antiPhaseSourcesCancel(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
         FieldType fulgur = FieldTypes.FULGUR.get();
         FieldWorld world = world(helper);
         world.putSource(wave(helper, fulgur, new Vec3(4.5, 4.0, 7.5), 5.0, 16, 0.0));
@@ -288,5 +301,71 @@ public final class FieldTheoryGameTests {
         helper.assertTrue(world.amplitude(fulgur, helper.absoluteVec(new Vec3(5.5, 4.0, 7.5))) > 0.5, "off the mid plane there is signal");
         cleanup(helper);
         helper.succeed();
+    }
+
+    /** Regions are found through the column index; the gain must equal the product over all regions. */
+    @GameTest(template = LAB, batch = "ft_region_index")
+    public static void regionIndexMatchesBruteForce(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
+        FieldWorld world = world(helper);
+        FieldType nexus = FieldTypes.NEXUS.get();
+        Vec3 origin = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
+        Random random = new Random(7);
+        for (int i = 0; i < 60; i++) {
+            Vec3 c = origin.add((random.nextDouble() - 0.5) * 80, (random.nextDouble() - 0.5) * 10, (random.nextDouble() - 0.5) * 80);
+            Optional<FieldType> type = random.nextBoolean() ? Optional.empty() : Optional.of(nexus);
+            world.putRegion(FieldRegion.temporary(helper.getLevel(), type, c, 2 + random.nextDouble() * 20, random.nextDouble() * 3, 400, ORIGIN));
+        }
+        for (int i = 0; i < 40; i++) {
+            Vec3 p = origin.add((random.nextDouble() - 0.5) * 60, (random.nextDouble() - 0.5) * 8, (random.nextDouble() - 0.5) * 60);
+            double expected = 1.0;
+            for (FieldRegion r : world.regions()) {
+                if (r.affects(nexus)) {
+                    expected *= r.gainAt(p);
+                }
+            }
+            double actual = world.gain(nexus, p);
+            helper.assertTrue(Math.abs(actual - expected) < 1.0E-12, "indexed gain " + actual + " != brute force " + expected + " at " + p);
+        }
+        cleanup(helper);
+        helper.succeed();
+    }
+
+    /**
+     * Dielectrophoresis: a dropped iron ingot drifts into a strong field even though the source is
+     * negative (the force follows ∇|E|², not the sign); dirt is not a conductor and stays put.
+     */
+    @GameTest(template = LAB, batch = "ft_polarization", timeoutTicks = 100)
+    public static void conductorsArePulledIntoStrongFields(GameTestHelper helper) {
+        cleanup(helper); // a failed earlier test must not leak its fields into this one
+        put(helper, FieldTypes.FULGUR.get(), new Vec3(7.5, 4.0, 7.5), -12.0);
+        ItemEntity iron = floatingItem(helper, Items.IRON_INGOT, new Vec3(4.5, 4.0, 7.5));
+        ItemEntity dirt = floatingItem(helper, Items.DIRT, new Vec3(10.5, 4.0, 7.5));
+        Vec3 source = helper.absoluteVec(new Vec3(7.5, 4.0, 7.5));
+        Vec3 dirtStart = dirt.position();
+        // In mid-air nothing damps the motion: the ingot falls into the field maximum and swings
+        // through it. Judge by its closest approach rather than its final position.
+        double[] closest = {iron.position().distanceTo(source)};
+        helper.onEachTick(() -> closest[0] = Math.min(closest[0], iron.position().distanceTo(source)));
+        helper.runAfterDelay(40, () -> {
+            double dirtMoved = dirt.position().distanceTo(dirtStart);
+            iron.discard();
+            dirt.discard();
+            cleanup(helper);
+            helper.assertTrue(closest[0] < 1.0, "iron should be drawn into the strong field, closest approach " + closest[0]);
+            helper.assertTrue(dirtMoved < 0.01, "dirt is no conductor and must not move, moved " + dirtMoved);
+            helper.succeed();
+        });
+    }
+
+    private static ItemEntity floatingItem(GameTestHelper helper, net.minecraft.world.item.Item item, Vec3 relative) {
+        Vec3 at = helper.absoluteVec(relative);
+        ItemEntity entity = new ItemEntity(helper.getLevel(), at.x, at.y, at.z, new ItemStack(item));
+        entity.setNoGravity(true);
+        entity.setDeltaMovement(Vec3.ZERO);
+        entity.setNeverPickUp();
+        entity.setUnlimitedLifetime();
+        helper.getLevel().addFreshEntity(entity);
+        return entity;
     }
 }

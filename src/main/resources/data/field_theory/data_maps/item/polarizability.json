@@ -1,0 +1,40 @@
+{
+  "values": {
+    "#c:nuggets/iron": {
+      "field_theory:fulgur": 0.001
+    },
+    "#c:nuggets/gold": {
+      "field_theory:fulgur": 0.001
+    },
+    "#c:ingots/iron": {
+      "field_theory:fulgur": 0.004
+    },
+    "#c:ingots/gold": {
+      "field_theory:fulgur": 0.004
+    },
+    "#c:ingots/copper": {
+      "field_theory:fulgur": 0.005
+    },
+    "#c:raw_materials/iron": {
+      "field_theory:fulgur": 0.002
+    },
+    "#c:raw_materials/gold": {
+      "field_theory:fulgur": 0.002
+    },
+    "#c:raw_materials/copper": {
+      "field_theory:fulgur": 0.002
+    },
+    "minecraft:chain": {
+      "field_theory:fulgur": 0.002
+    },
+    "minecraft:lightning_rod": {
+      "field_theory:fulgur": 0.008
+    },
+    "minecraft:iron_block": {
+      "field_theory:fulgur": 0.03
+    },
+    "minecraft:copper_block": {
+      "field_theory:fulgur": 0.04
+    }
+  }
+}

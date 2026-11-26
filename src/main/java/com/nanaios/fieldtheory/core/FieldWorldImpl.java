@@ -46,6 +46,7 @@ public final class FieldWorldImpl implements FieldWorld {
     private final Map<UUID, FieldSource> sources = new LinkedHashMap<>();
     private final Map<FieldType, SourceIndex> indices = new IdentityHashMap<>();
     private final Map<UUID, FieldRegion> regions = new LinkedHashMap<>();
+    private final RegionIndex regionIndex = new RegionIndex();
 
     private final Int2ObjectMap<Entity> emitterEntities = new Int2ObjectOpenHashMap<>();
     private final Map<FieldType, List<Emitter>> emitterSnapshot = new IdentityHashMap<>();
@@ -195,8 +196,12 @@ public final class FieldWorldImpl implements FieldWorld {
         if (regions.isEmpty()) {
             return 1.0;
         }
+        List<FieldRegion> nearby = regionIndex.at(pos);
+        if (nearby == null) {
+            return 1.0;
+        }
         double g = 1.0;
-        for (FieldRegion region : regions.values()) {
+        for (FieldRegion region : nearby) {
             if (region.affects(type)) {
                 g *= region.gainAt(pos);
             }
@@ -378,7 +383,7 @@ public final class FieldWorldImpl implements FieldWorld {
     @Override
     public void putRegion(FieldRegion region) {
         requireAuthority();
-        regions.put(region.id(), region);
+        putRegionInternal(region);
         pendingRegionRemovals.remove(region.id());
         pendingRegionPuts.put(region.id(), region);
         trackExpiry(region.expiresAt());
@@ -388,7 +393,7 @@ public final class FieldWorldImpl implements FieldWorld {
     @Override
     public boolean removeRegion(UUID id) {
         requireAuthority();
-        if (regions.remove(id) == null) {
+        if (removeRegionInternal(id) == null) {
             return false;
         }
         pendingRegionPuts.remove(id);
@@ -408,6 +413,23 @@ public final class FieldWorldImpl implements FieldWorld {
         }
         ids.forEach(this::removeRegion);
         return ids.size();
+    }
+
+    private void putRegionInternal(FieldRegion region) {
+        FieldRegion old = regions.put(region.id(), region);
+        if (old != null) {
+            regionIndex.remove(old);
+        }
+        regionIndex.add(region);
+    }
+
+    @Nullable
+    private FieldRegion removeRegionInternal(UUID id) {
+        FieldRegion old = regions.remove(id);
+        if (old != null) {
+            regionIndex.remove(old);
+        }
+        return old;
     }
 
     private void putSourceInternal(FieldSource source) {
@@ -454,7 +476,7 @@ public final class FieldWorldImpl implements FieldWorld {
             trackExpiry(s.expiresAt());
         }
         for (FieldRegion r : loadedRegions) {
-            regions.put(r.id(), r);
+            putRegionInternal(r);
             trackExpiry(r.expiresAt());
         }
     }
@@ -520,14 +542,15 @@ public final class FieldWorldImpl implements FieldWorld {
         sources.clear();
         indices.clear();
         regions.clear();
+        regionIndex.clear();
         newSources.forEach(this::putSourceInternal);
-        newRegions.forEach(r -> regions.put(r.id(), r));
+        newRegions.forEach(this::putRegionInternal);
     }
 
     public void applyDelta(FieldDeltaPayload delta) {
         delta.removedSources().forEach(this::removeSourceInternal);
         delta.putSources().forEach(this::putSourceInternal);
-        delta.removedRegions().forEach(regions::remove);
-        delta.putRegions().forEach(r -> regions.put(r.id(), r));
+        delta.removedRegions().forEach(this::removeRegionInternal);
+        delta.putRegions().forEach(this::putRegionInternal);
     }
 }
