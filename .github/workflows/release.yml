@@ -1,25 +1,61 @@
 name: Release
 
-# Push a tag such as v0.5.0 (it must equal mod_version in gradle.properties) to build, run the
-# GameTests and publish the jar to GitHub Releases, Modrinth and CurseForge in one go.
-#
-# Repository settings (Settings -> Secrets and variables -> Actions):
-#   secrets   MODRINTH_TOKEN, CURSEFORGE_TOKEN
-#   variables MODRINTH_PROJECT_ID, CURSEFORGE_PROJECT_ID, RELEASE_TYPE (alpha | beta | release; default beta)
-# A platform whose token is not set is skipped, so the GitHub release works even before the
-# Modrinth / CurseForge projects exist.
+# One-click release: Actions -> Release -> Run workflow (on main).
+# Publishes the version in gradle.properties (mod_version) to GitHub Releases, Modrinth and
+# CurseForge, and creates the tag v<mod_version>. See docs/RELEASING.md.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version-type:
+        description: Release type
+        type: choice
+        options: [release, beta, alpha]
+        default: release
 
 permissions:
   contents: write
+
+# Where to publish. These are public, so they live here rather than in repository settings.
+env:
+  MODRINTH_PROJECT: field-theory   # Modrinth slug or ID
+  CURSEFORGE_PROJECT: ''           # CurseForge numeric project ID (shown on the project page)
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check settings
+        id: meta
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run the release from main (not $GITHUB_REF_NAME)"
+            exit 1
+          fi
+          VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "::error::v$VERSION is already released. Raise mod_version in gradle.properties first."
+            exit 1
+          fi
+          TARGETS="GitHub"
+          if [ -n "$MODRINTH_TOKEN" ]; then TARGETS="$TARGETS, Modrinth"; fi
+          if [ -n "$CURSEFORGE_TOKEN" ]; then
+            if ! [[ "$CURSEFORGE_PROJECT" =~ ^[0-9]+$ ]]; then
+              echo "::error::Set CURSEFORGE_PROJECT in release.yml to the numeric CurseForge project ID"
+              exit 1
+            fi
+            TARGETS="$TARGETS, CurseForge"
+          fi
+          echo "Releasing $VERSION (${{ inputs.version-type }}) to: $TARGETS" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Release notes: the section of CHANGELOG.md for this version.
+          awk -v head="## $VERSION" '$0 == head {found = 1; next} /^## / {if (found) exit} found' CHANGELOG.md > release_notes.md
+          [ -s release_notes.md ] || echo "See CHANGELOG.md" > release_notes.md
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,37 +63,28 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Check that the tag matches mod_version
-        id: meta
-        run: |
-          MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
-          if [ "${GITHUB_REF_NAME#v}" != "$MOD_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match mod_version $MOD_VERSION"
-            exit 1
-          fi
-          echo "version=$MOD_VERSION" >> "$GITHUB_OUTPUT"
-          # Release notes: the section of CHANGELOG.md for this version.
-          awk -v head="## $MOD_VERSION" '$0 == head {found = 1; next} /^## / {if (found) exit} found' CHANGELOG.md > release_notes.md
-          [ -s release_notes.md ] || echo "See CHANGELOG.md" > release_notes.md
       - name: Build
         run: ./gradlew build --console=plain
 
       - name: GameTests
         run: ./gradlew runGameTestServer --console=plain
 
+      # A platform whose token secret is not set is skipped.
       - name: Publish to GitHub, Modrinth and CurseForge
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          github-tag: v${{ steps.meta.outputs.version }}
+          github-commitish: ${{ github.sha }}
+          modrinth-id: ${{ env.MODRINTH_PROJECT }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-id: ${{ env.CURSEFORGE_PROJECT }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: |
             build/libs/!(*-@(dev|sources|javadoc)).jar
           name: Field Theory ${{ steps.meta.outputs.version }}
           version: ${{ steps.meta.outputs.version }}
-          version-type: ${{ vars.RELEASE_TYPE || 'beta' }}
+          version-type: ${{ inputs.version-type }}
           changelog-file: release_notes.md
           loaders: neoforge
           game-versions: 1.21.1
