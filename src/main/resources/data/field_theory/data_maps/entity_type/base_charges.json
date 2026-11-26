@@ -1,0 +1,18 @@
+{
+  "values": {
+    "minecraft:creeper":        { "charges": { "field_theory:fulgur": 2.0 } },
+    "minecraft:blaze":          { "charges": { "field_theory:fulgur": 1.5 } },
+    "minecraft:guardian":       { "charges": { "field_theory:fulgur": -1.0 } },
+    "minecraft:elder_guardian": { "mass": 8.0, "charges": { "field_theory:fulgur": -3.0 } },
+    "minecraft:lightning_bolt": { "charges": { "field_theory:fulgur": 20.0 } },
+    "minecraft:slime":          { "charges": { "field_theory:nexus": 1.0 } },
+    "minecraft:magma_cube":     { "charges": { "field_theory:nexus": 1.0 } },
+    "minecraft:end_crystal":    { "charges": { "field_theory:nexus": 3.0 } },
+    "minecraft:shulker":        { "charges": { "field_theory:gravis": -3.0 } },
+    "minecraft:iron_golem":     { "mass": 6.0 },
+    "minecraft:ravager":        { "mass": 6.0 },
+    "minecraft:warden":         { "mass": 10.0 },
+    "minecraft:ender_dragon":   { "mass": 30.0 },
+    "minecraft:wither":         { "mass": 12.0 }
+  }
+}
