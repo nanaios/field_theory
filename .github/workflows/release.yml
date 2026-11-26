@@ -1,6 +1,13 @@
 name: Release
 
-# Push a tag such as v0.2.0 to build, test and attach the jars to a GitHub release.
+# Push a tag such as v0.5.0 (it must equal mod_version in gradle.properties) to build, run the
+# GameTests and publish the jar to GitHub Releases, Modrinth and CurseForge in one go.
+#
+# Repository settings (Settings -> Secrets and variables -> Actions):
+#   secrets   MODRINTH_TOKEN, CURSEFORGE_TOKEN
+#   variables MODRINTH_PROJECT_ID, CURSEFORGE_PROJECT_ID, RELEASE_TYPE (alpha | beta | release; default beta)
+# A platform whose token is not set is skipped, so the GitHub release works even before the
+# Modrinth / CurseForge projects exist.
 on:
   push:
     tags: ['v*']
@@ -13,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -21,13 +27,41 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Check that the tag matches mod_version
+        id: meta
+        run: |
+          MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          if [ "${GITHUB_REF_NAME#v}" != "$MOD_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match mod_version $MOD_VERSION"
+            exit 1
+          fi
+          echo "version=$MOD_VERSION" >> "$GITHUB_OUTPUT"
+          # Release notes: the section of CHANGELOG.md for this version.
+          awk -v head="## $MOD_VERSION" '$0 == head {found = 1; next} /^## / {if (found) exit} found' CHANGELOG.md > release_notes.md
+          [ -s release_notes.md ] || echo "See CHANGELOG.md" > release_notes.md
       - name: Build
         run: ./gradlew build --console=plain
 
       - name: GameTests
         run: ./gradlew runGameTestServer --console=plain
 
-      - uses: softprops/action-gh-release@v2
+      - name: Publish to GitHub, Modrinth and CurseForge
+        uses: Kir-Antipov/mc-publish@v3.3
         with:
-          files: build/libs/*.jar
-          generate_release_notes: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: |
+            build/libs/!(*-@(dev|sources|javadoc)).jar
+          name: Field Theory ${{ steps.meta.outputs.version }}
+          version: ${{ steps.meta.outputs.version }}
+          version-type: ${{ vars.RELEASE_TYPE || 'beta' }}
+          changelog-file: release_notes.md
+          loaders: neoforge
+          game-versions: 1.21.1
+          java: 21
+          retry-attempts: 2
+          retry-delay: 10000
+          fail-mode: fail
